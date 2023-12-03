@@ -36,8 +36,9 @@ class KiwiContainer {
   void registerInstance<S>(
     S instance, {
     String? name,
+    bool replace = false,
   }) {
-    _setProvider(name, _Provider<S>.instance(instance));
+    _setProvider(name, _Provider<S>.instance(instance), replace);
   }
 
   /// Registers a factory into the container.
@@ -50,8 +51,9 @@ class KiwiContainer {
   void registerFactory<S>(
     Factory<S> factory, {
     String? name,
+    bool replace = false,
   }) {
-    _setProvider(name, _Provider<S>.factory(factory));
+    _setProvider(name, _Provider<S>.factory(factory), replace);
   }
 
   /// Registers a factory that will be called only only when
@@ -65,8 +67,9 @@ class KiwiContainer {
   void registerSingleton<S>(
     Factory<S> factory, {
     String? name,
+    bool replace = false,
   }) {
-    _setProvider(name, _Provider<S>.singleton(factory));
+    _setProvider(name, _Provider<S>.singleton(factory), replace);
   }
 
   /// Removes the entry previously registered for the type [T].
@@ -139,11 +142,11 @@ class KiwiContainer {
     _namedProviders.clear();
   }
 
-  void _setProvider<T>(String? name, _Provider<T> provider) {
+  void _setProvider<T>(String? name, _Provider<T> provider, bool replace) {
     final nameProviders = _namedProviders;
     if (!silent &&
         (nameProviders.containsKey(name) &&
-            nameProviders[name]!.containsKey(T))) {
+            nameProviders[name]!.containsKey(T)) && !replace) {
       throw KiwiError(
           'The type `$T` was already registered${name == null ? '' : ' for the name `$name`'}');
     }
