@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:kiwi/src/model/exception/kiwi_error.dart';
 import 'package:kiwi/src/model/exception/not_registered_error.dart';
 import 'package:meta/meta.dart';
 
 /// Signature for a builder which creates an object of type [T].
 typedef T Factory<T>(KiwiContainer container);
+
+typedef Future<T> FutureFactory<T>(KiwiContainer container);
 
 /// A simple service container.
 class KiwiContainer {
@@ -56,6 +60,14 @@ class KiwiContainer {
     _setProvider(name, _Provider<S>.factory(factory), replace);
   }
 
+  void registerFutureSingleton<S>(
+      FutureFactory<S> factory, {
+        String? name,
+        bool replace = false,
+      }) {
+    _setProvider(name, _Provider<S>.futureSingleton(factory), replace);
+  }
+
   /// Registers a factory that will be called only only when
   /// accessing it for the first time, into the container.
   ///
@@ -100,6 +112,23 @@ class KiwiContainer {
     }
 
     final value = providers[T]?.get(this);
+    if (value == null) {
+      throw NotRegisteredKiwiError(
+          'Failed to resolve `$T`:\n\nThe type `$T` was not registered${name == null ? '' : ' for the name `$name`'}\n\nMake sure `$T` is added to your KiwiContainer and rerun build_runner build\n(If you are using the kiwi_generator)\n\nWhen using Flutter, most of the time a hot restart is required to setup the KiwiContainer again.');
+    }
+    if (value is T) return value as T;
+    throw NotRegisteredKiwiError(
+        'Failed to resolve `$T`:\n\nValue was not registered as `$T`\n\nThe type `$T` was not registered${name == null ? '' : ' for the name `$name`'}\n\nMake sure `$T` is added to your KiwiContainer and rerun build_runner build\n(If you are using the kiwi_generator)\n\nWhen using Flutter, most of the time a hot restart is required to setup the KiwiContainer again.');
+  }
+
+    Future<T> resolveFuture<T>([String? name]) async {
+    final providers = _namedProviders[name] ?? Map<Type, _Provider<Object>>();
+    if (!silent && !(providers.containsKey(T))) {
+      throw NotRegisteredKiwiError(
+          'Failed to resolve `$T`:\n\nThe type `$T` was not registered${name == null ? '' : ' for the name `$name`'}\n\nMake sure `$T` is added to your KiwiContainer and rerun build_runner build\n(If you are using the kiwi_generator)\n\nWhen using Flutter, most of the time a hot restart is required to setup the KiwiContainer again.');
+    }
+
+    final value = await providers[T]?.getFuture(this);
     if (value == null) {
       throw NotRegisteredKiwiError(
           'Failed to resolve `$T`:\n\nThe type `$T` was not registered${name == null ? '' : ' for the name `$name`'}\n\nMake sure `$T` is added to your KiwiContainer and rerun build_runner build\n(If you are using the kiwi_generator)\n\nWhen using Flutter, most of the time a hot restart is required to setup the KiwiContainer again.');
@@ -158,11 +187,16 @@ class KiwiContainer {
 class _Provider<T> {
   _Provider.instance(this.object)
       : _instanceBuilder = null,
+        _futureInstanceBuilder = null,
         _oneTime = false;
 
-  _Provider.factory(this._instanceBuilder) : _oneTime = false;
+  _Provider.factory(this._instanceBuilder) : _oneTime = false, _futureInstanceBuilder = null;
 
-  _Provider.singleton(this._instanceBuilder) : _oneTime = true;
+  _Provider.singleton(this._instanceBuilder) : _oneTime = true, _futureInstanceBuilder = null;
+
+  _Provider.futureSingleton(this._futureInstanceBuilder) : _oneTime = true, _instanceBuilder = null;
+
+  final FutureFactory<T>? _futureInstanceBuilder;
 
   final Factory<T>? _instanceBuilder;
   T? object;
@@ -184,6 +218,43 @@ class _Provider<T> {
       return instanceBuilder(container);
     }
 
+    return null;
+  }
+
+  Completer<T>? _futureCompleter;
+
+  Future<T?> getFuture(KiwiContainer container) async {
+    if (object != null) {
+      return object;
+    }
+
+    if (_futureCompleter != null) {
+      return await _futureCompleter!.future;
+    }
+
+    _futureCompleter = Completer<T>();
+
+    final instanceBuilder = _futureInstanceBuilder;
+
+    if (_oneTime && instanceBuilder != null) {
+      instanceBuilder(container).then((value) {
+        object = value;
+        _oneTime = false;
+        _futureCompleter!.complete(value);
+        _futureCompleter = null;
+      });
+      return await _futureCompleter!.future;
+    }
+
+    if (instanceBuilder != null) {
+      instanceBuilder(container).then((value) {
+        object = value;
+        _oneTime = false;
+        _futureCompleter!.complete(value);
+        _futureCompleter = null;
+      });
+      return await _futureCompleter!.future;
+    }
     return null;
   }
 }
