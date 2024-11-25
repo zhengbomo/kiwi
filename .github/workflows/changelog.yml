@@ -2,21 +2,20 @@ name: changelog
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ 'master', 'stable' ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ 'master', 'stable' ]
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
         with:
           sdk: 'stable'
       - name: Check changelog
         run: |
-         cd tool/actions
+         cd tools/kiwi_cli_actions
          dart pub get
-         cd ../.. 
-         dart run tool/actions/changelog_checker.dart
+         dart run
