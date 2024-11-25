@@ -185,8 +185,8 @@ class KiwiContainer {
         'Failed to resolve `$T`:\n\nValue was not registered as `$T`\n\nThe type `$T` was not registered${name == null ? '' : ' for the name `$name`'}\n\nMake sure `$T` is added to your KiwiContainer and rerun build_runner build\n(If you are using the kiwi_generator)\n\nWhen using Flutter, most of the time a hot restart is required to setup the KiwiContainer again.');
   }
 
-    Future<T> resolveFuture<T>([String? name]) async {
-    final providers = _namedProviders[name] ?? Map<Type, _Provider<Object>>();
+  Future<T> resolveFuture<T>([String? name]) async {
+    final providers = _providers[name] ?? _ProviderValue.from({});
     if (!silent && !(providers.containsKey(T))) {
       throw NotRegisteredKiwiError(
           'Failed to resolve `$T`:\n\nThe type `$T` was not registered${name == null ? '' : ' for the name `$name`'}\n\nMake sure `$T` is added to your KiwiContainer and rerun build_runner build\n(If you are using the kiwi_generator)\n\nWhen using Flutter, most of the time a hot restart is required to setup the KiwiContainer again.');
